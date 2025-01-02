@@ -62,10 +62,74 @@ app.get("/contacts/new", (req, res) => {
   res.render("new-contact");
 });
 
-app.post("/contacts/new", (req, res) => {
-  contactData.push({ ...req.body });
-  res.redirect("/contacts");
-});
+app.post("/contacts/new",
+  (req, res, next) => {
+    res.locals.errorMessages = [];
+    next();
+  },
+  (req, res, next) => {
+    if (req.body.firstName.length === 0) {
+      res.locals.errorMessages.push("First name is required.");
+    } else if (req.body.firstName.length > 25) {
+      res.locals.errorMessages.push("First name cannot be over 25 characters.");
+    } else if (req.body.firstName.match(/[^a-z]/i)) {
+      res.locals.errorMessages.push("First name cannot contain non-alphabetic characters.");
+    }
+
+    next();
+  },
+  (req, res, next) => {
+    if (req.body.lastName.length === 0) {
+      res.locals.errorMessages.push("Last name is required.");
+    } else if (req.body.lastName.length > 25) {
+      res.locals.errorMessages.push("Last name cannot be over 25 characters.");
+    } else if (req.body.lastName.match(/[^a-z]/i)) {
+      res.locals.errorMessages.push("Last name cannot contain non-alphabetic characters.");
+    }
+
+    next();
+  },
+  (req, res, next) => {
+    if (req.body.phoneNumber.length === 0) {
+      res.locals.errorMessages.push("Phone number is required.");
+    } else if (!req.body.phoneNumber.match(/\d{3}-\d{3}-\d{4}/) || req.body.phoneNumber.length !== 12) {
+      res.locals.errorMessages.push("Phone number must match ###-###-#### format.");
+    }
+
+    next();
+  },
+  (req, res, next) => {
+    if (contactData.find(contact => {
+      return (contact.firstName === req.body.firstName &&
+              contact.lastName === req.body.lastName);
+    })) {
+      res.locals.errorMessages.push("No duplicate contacts (matching first and last names).");
+    }
+
+    next();
+  },
+  (req, res, next) => {
+    if (res.locals.errorMessages.length > 0) {
+      res.render("new-contact", {
+        errorMessages: res.locals.errorMessages,
+        firstName: req.body.firstName,
+        lastName: req.body.lastName,
+        phoneNumber: req.body.phoneNumber,
+      });
+    } else {
+      next();
+    }
+  },
+  (req, res) => {
+    contactData.push({
+      firstName: req.body.firstName,
+      lastName: req.body.lastName,
+      phoneNumber: req.body.phoneNumber,
+    });
+
+    res.redirect("/contacts");
+  }
+);
 
 app.listen(3000, "localhost", () => {
   console.log("Listening to port 3000.");
